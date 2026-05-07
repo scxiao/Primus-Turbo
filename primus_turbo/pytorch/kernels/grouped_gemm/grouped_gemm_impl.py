@@ -207,9 +207,10 @@ class GroupedGEMMTritonBackend(KernelBackend):
         trans_a: bool,
         trans_b: bool,
         num_cu: int | None,
+        work_stealing: bool = False,
         **kwargs,
     ) -> torch.Tensor:
-        return grouped_gemm_triton_kernel(a, b, group_offs, trans_b=trans_b, grid_dim=num_cu)
+        return grouped_gemm_triton_kernel(a, b, group_offs, trans_b=trans_b, grid_dim=num_cu, work_steal=work_stealing)
 
 
 _GROUPED_GEMM_BACKENDS = {
@@ -311,6 +312,7 @@ def grouped_gemm_impl(
     num_cu: int | None,
     default_backend: int,
     maybe_pre_sync: bool = False,
+    work_stealing: bool = False,
 ) -> torch.Tensor:
     default_backend_enum = BackendType(default_backend)
     user_backend_enum = GlobalBackendManager.get_grouped_gemm_backend()
@@ -324,6 +326,7 @@ def grouped_gemm_impl(
         trans_b=trans_b,
         num_cu=num_cu,
         maybe_pre_sync=maybe_pre_sync,
+        work_stealing=work_stealing,
     )
 
     return GroupedGEMMKernelDispatcher.dispatch(default_backend_enum, user_backend_enum, **kwargs)
@@ -369,6 +372,7 @@ def grouped_gemm_impl_meta(
     num_cu: int | None,
     default_backend: int,
     maybe_pre_sync: bool = False,
+    work_stealing: bool = False,
 ) -> torch.Tensor:
     assert a.dim() == 2, f"a must be 2D, got {a.shape}"
     assert b.dim() == 3, f"b must be 3D, got {b.shape}"
